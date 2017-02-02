@@ -2,56 +2,59 @@
 
 'use strict';
 
-var app = angular.module("ShoppingListCheckOff", []);
+var app = angular.module("NarrowItDownApp", []);
 
-app.controller("ToBuyController", ToBuyController);
-app.controller("AlreadyBoughtController", AlreadyBoughtController);
-app.service("ShoppingListCheckOffService", ShoppingListCheckOffService);
+app.controller("NarrowItDownController", NarrowItDownController);
+app.service("MenuSearchService", MenuSearchService);
+app.constant('ApiBasePath', "https://davids-restaurant.herokuapp.com");
+NarrowItDownController.$inject = ['MenuSearchService'];
+MenuSearchService.$inject = ['$http', 'ApiBasePath', '$q'];
 
-ToBuyController.$inject = ['ShoppingListCheckOffService'];
-AlreadyBoughtController.$inject = ['ShoppingListCheckOffService'];
+function NarrowItDownController(MenuSearchService){
+	var menu = this;
 
-function ToBuyController(ShoppingListCheckOffService){
-	var itemsToBuy = this;
+  menu.search = function(){
+    var searchStr = menu.searchStr;
 
-	itemsToBuy.items = ShoppingListCheckOffService.getItems();
-
-	itemsToBuy.checkoff = function(itemIndex){
-			ShoppingListCheckOffService.buyItem(itemIndex);
-	}
-
+    var promise = MenuSearchService.getMatchedMenuItems(searchStr);
+    promise.then(function (response) {
+      menu.found = response.data;
+    })
+    .catch(function (error) {
+      console.log(error);
+    })
+  }
 };
 
-function AlreadyBoughtController(ShoppingListCheckOffService){
-	var itemBought = this;
-	itemBought.items = ShoppingListCheckOffService.getBougthItems();
-};
-
-function ShoppingListCheckOffService(){
+function MenuSearchService($http, ApiBasePath, $q){
 	var service = this;
 
-	 var itemsToBuy = [
-		{ name: "cookies", quantity: 10 },
-		{ name: "chips", quantity: 15 },
-		{ name: "biscuit", quantity: 20 },
-		{ name: "pizza", quantity: 3 },
-		{ name: "pepsi", quantity: 5}
-	];
 
-	var itemsBought = [];
 
-	service.getItems = function(){
-		return itemsToBuy;
-	}
+	service.getMatchedMenuItems = function (searchTerm){
+      var deferred = $q.defer();
+	 		$http({
+  						method: "GET",
+      					url: (ApiBasePath + "/menu_items.json")
+    				}).then(function(response){
+    						var menuArr = response.data.menu_items;
+                var found = [];
+                for (var i = 0; i < menuArr.length; i++ ) {
+                      if(menuArr[i].description.toLowerCase().indexOf(searchTerm) !== -1){
+                          found.push(menuArr[i]);
+                      }
 
-	service.getBougthItems = function(){
-		return itemsBought;
-	}
+                };
+                response.data = found 
+                deferred.resolve(response);
 
-	service.buyItem = function buy(itemIndex){
-		var item = itemsToBuy[itemIndex];
-		itemsBought.push(item);
-		itemsToBuy.splice(itemIndex,1);
+    				},function(error){
+                deferred.reject(error);
+    				});
+
+            return deferred.promise;
+
+
 	}
 }
 

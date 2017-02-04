@@ -7,23 +7,69 @@ var app = angular.module("NarrowItDownApp", []);
 app.controller("NarrowItDownController", NarrowItDownController);
 app.service("MenuSearchService", MenuSearchService);
 app.constant('ApiBasePath', "https://davids-restaurant.herokuapp.com");
+app.directive('foundItems', FoundItemsDirective);
 NarrowItDownController.$inject = ['MenuSearchService'];
 MenuSearchService.$inject = ['$http', 'ApiBasePath', '$q'];
 
+
+
+function FoundItemsDirective(){
+  var ddo = {
+         restrict: 'E',
+        templateUrl: 'foundItems.html',
+        scope: {
+                foundItems: '<',
+                onRemove: '&'
+        },
+        controller: FoundItemsDirectiveController,
+        controllerAs: 'foundList',
+        bindToController: true
+
+  }
+
+  return ddo;
+}
+
+function FoundItemsDirectiveController() {
+  var foundList = this;
+}
+
 function NarrowItDownController(MenuSearchService){
 	var menu = this;
-
+  menu.dataNotFound = false;
+  menu.displayMenu = false;
+  menu.found;
   menu.search = function(){
     var searchStr = menu.searchStr;
+
+    if(searchStr == ""){
+        menu.found = [];
+        menu.dataNotFound = true;
+        menu.displayMenu = false;
+        return;
+    }
 
     var promise = MenuSearchService.getMatchedMenuItems(searchStr);
     promise.then(function (response) {
       menu.found = response.data;
+      if(menu.found.length == 0){
+        menu.dataNotFound = true;
+         menu.displayMenu = false;
+      }else{
+        menu.dataNotFound = false;
+         menu.displayMenu = true;
+      }
     })
     .catch(function (error) {
       console.log(error);
     })
-  }
+  };
+
+  menu.removeItem = function(index){
+      menu.found.splice(index, 1);
+
+  };
+
 };
 
 function MenuSearchService($http, ApiBasePath, $q){
